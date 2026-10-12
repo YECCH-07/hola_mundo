@@ -101,6 +101,54 @@ void main() {
   print('frutasSinColocar([3,6,1], [6,4,7]) = '
       '${frutasSinColocar([3, 6, 1], [6, 4, 7])}');
 
+  // ---------- Sección 3.3: operaciones con List ----------
+  print('\n=== Sección 3.3: operaciones con List ===');
+  List<String> estudiantes = ['Ana', 'Luis', 'María', 'Carlos'];
+  estudiantes.add('Pedro');
+  print('lista: $estudiantes');
+  // ignore: avoid_function_literals_in_foreach_calls
+  estudiantes.forEach((e) => print('Estudiante: $e'));
+  print('where (>4 letras): '
+      '${estudiantes.where((e) => e.length > 4).toList()}');
+  print('map (mayúsculas): '
+      '${estudiantes.map((e) => e.toUpperCase()).toList()}');
+  print('reduce: ${estudiantes.reduce((acc, e) => '$acc + $e')}');
+  estudiantes.sort();
+  print('sort: $estudiantes');
+
+  // ---------- Sección 4.3/4.4: operaciones con Map ----------
+  print('\n=== Sección 4.3/4.4: operaciones con Map ===');
+  Map<String, double> precios = {
+    'Manzana': 2.50,
+    'Pera': 3.00,
+    'Uva': 5.50,
+  };
+  precios['Mango'] = 4.75;
+  precios.update('Pera', (v) => v * 1.1);
+  print('update: ${precios['Pera']!.toStringAsFixed(2)}');
+  precios.putIfAbsent('Papaya', () => 6.20);
+  precios.putIfAbsent('Mango', () => 9.99); // ya existe: no lo agrega
+  print('putIfAbsent: ${precios.keys}');
+  print('baratos (<4): '
+      '${Map.fromEntries(precios.entries.where((e) => e.value < 4))}');
+  Map<String, Map<String, dynamic>> alumnos = {
+    'A001': {'nombre': 'Ana García', 'edad': 22, 'nota': 18.5},
+    'A002': {'nombre': 'Luis Pérez', 'edad': 24, 'nota': 16.0},
+  };
+  print('anidado: ${alumnos['A001']!['nombre']} / '
+      'nota ${alumnos['A002']!['nota']}');
+
+  // ---------- Sección 5.2: operaciones con Set ----------
+  print('\n=== Sección 5.2: operaciones con Set ===');
+  Set<int> A = {1, 2, 3, 4, 5};
+  Set<int> B = {4, 5, 6, 7, 8};
+  print('unión: ${A.union(B)}');
+  print('intersección: ${A.intersection(B)}');
+  print('diferencia: ${A.difference(B)}');
+  print('subconjunto: ${A.containsAll({1, 2})}');
+  final conDuplicados = [1, 2, 2, 3, 3, 3];
+  print('sin duplicados: ${conDuplicados.toSet()}');
+
   // ---------- Sección 6: otros tipos ----------
   print('\n=== Sección 6: otros tipos de datos ===');
   final corazon = Runes('❤');

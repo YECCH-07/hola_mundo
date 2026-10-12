@@ -91,6 +91,33 @@ class Practica02Pantalla extends StatelessWidget {
     final ej3b = frutasSinColocar([3, 6, 1], [6, 4, 7]);
     final corazon = String.fromCharCodes(Runes('❤'));
     final punto = (10.0, 20.0);
+
+    // Operaciones con List (sección 3.3)
+    final estudiantes = ['Ana', 'Luis', 'María', 'Carlos', 'Pedro'];
+    final largos = estudiantes.where((e) => e.length > 4).toList();
+    final mayusculas = estudiantes.map((e) => e.toUpperCase()).toList();
+    final ordenada = [...estudiantes]..sort();
+
+    // Operaciones con Map (sección 4.3)
+    final precios = <String, double>{
+      'Manzana': 2.50,
+      'Pera': 3.00,
+      'Uva': 5.50,
+      'Mango': 4.75,
+    };
+    precios.update('Pera', (v) => v * 1.1);
+    final baratos = Map.fromEntries(
+      precios.entries.where((e) => e.value < 4),
+    ).map((k, v) => MapEntry(k, double.parse(v.toStringAsFixed(2))));
+    final alumno = {
+      'A001': {'nombre': 'Ana García', 'nota': 18.5},
+    };
+
+    // Operaciones con Set (sección 5.2)
+    final A = {1, 2, 3, 4, 5};
+    final B = {4, 5, 6, 7, 8};
+    final conDuplicados = [1, 2, 2, 3, 3, 3];
+    final sinDups = conDuplicados.toSet();
     String? apellido;
 
     return Scaffold(
@@ -113,6 +140,15 @@ class Practica02Pantalla extends StatelessWidget {
           ),
           _tarjeta(
             context,
+            'List — Operaciones (sección 3.3)',
+            [
+              'where (>4 letras)  →  $largos',
+              'map (mayúsculas)   →  $mayusculas',
+              'sort               →  $ordenada',
+            ],
+          ),
+          _tarjeta(
+            context,
             'Map — Intersección de arreglos',
             [
               '[1,2,2,1] ∩ [2,2]  →  $ej2',
@@ -121,10 +157,30 @@ class Practica02Pantalla extends StatelessWidget {
           ),
           _tarjeta(
             context,
+            'Map — Operaciones (sección 4.3)',
+            [
+              'update (Pera ×1.1)  →  ${precios['Pera']!.toStringAsFixed(2)}',
+              'putIfAbsent (Papaya) →  ${precios.keys}',
+              'baratos (< S/. 4)   →  $baratos',
+              'anidado A001        →  ${alumno['A001']!['nombre']}',
+            ],
+          ),
+          _tarjeta(
+            context,
             'Set — Frutas y cestas',
             [
               'frutas [4,2,5], cestas [3,5,4]  →  $ej3 sin colocar',
               'frutas [3,6,1], cestas [6,4,7]  →  $ej3b sin colocar',
+            ],
+          ),
+          _tarjeta(
+            context,
+            'Set — Operaciones (sección 5.2)',
+            [
+              'unión         →  ${A.union(B)}',
+              'intersección  →  ${A.intersection(B)}',
+              'diferencia    →  ${A.difference(B)}',
+              'sin duplicados →  $sinDups',
             ],
           ),
           _tarjeta(
