@@ -459,7 +459,9 @@ class _PantallaAccesibleState extends State<PantallaAccesible> {
               ),
             ),
             const SizedBox(width: 12),
-            const Text('IconButton 24px en área de toque 48px'),
+            const Expanded(
+              child: Text('IconButton 24px en área de toque 48px'),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -487,7 +489,9 @@ class _PantallaAccesibleState extends State<PantallaAccesible> {
               child: Icon(Icons.star, color: Colors.amber),
             ),
             const SizedBox(width: 8),
-            const Text('Calificación: 4.5 de 5 (la estrella no se lee)'),
+            const Expanded(
+              child: Text('Calificación: 4.5 de 5 (la estrella no se lee)'),
+            ),
           ],
         ),
         const SizedBox(height: 24),
