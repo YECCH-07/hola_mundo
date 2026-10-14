@@ -17,8 +17,18 @@ void main() {
   runApp(const TiendaApp());
 }
 
-class TiendaApp extends StatelessWidget {
+class TiendaApp extends StatefulWidget {
   const TiendaApp({super.key});
+
+  @override
+  State<TiendaApp> createState() => _TiendaAppState();
+}
+
+class _TiendaAppState extends State<TiendaApp> {
+  // Guía 06: preferencias de accesibilidad
+  bool _modoOscuro = false;
+  bool _textoGrande = false;
+  bool _depuradorSemantico = false;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +39,43 @@ class TiendaApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const InicioTienda(),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      // Guía 06: alternar entre tema claro y oscuro
+      themeMode: _modoOscuro ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, child) {
+        Widget app = child!;
+        // Guía 06: texto escalable — se amplía sin bloquear el escalado
+        // del sistema y se limita a un máximo razonable (1.0–1.4).
+        if (_textoGrande) {
+          app = MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(
+                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.4),
+              ),
+            ),
+            child: app,
+          );
+        }
+        // Guía 06: herramienta de prueba — árbol semántico visible
+        if (_depuradorSemantico) {
+          app = SemanticsDebugger(child: app);
+        }
+        return app;
+      },
+      home: InicioTienda(
+        modoOscuro: _modoOscuro,
+        textoGrande: _textoGrande,
+        depuradorSemantico: _depuradorSemantico,
+        onModoOscuro: (v) => setState(() => _modoOscuro = v),
+        onTextoGrande: (v) => setState(() => _textoGrande = v),
+        onDepuradorSemantico: (v) => setState(() => _depuradorSemantico = v),
+      ),
     );
   }
 }
@@ -37,7 +83,22 @@ class TiendaApp extends StatelessWidget {
 // ---------- Raíz: estado compartido y navegación adaptativa ----------
 
 class InicioTienda extends StatefulWidget {
-  const InicioTienda({super.key});
+  final bool modoOscuro;
+  final bool textoGrande;
+  final bool depuradorSemantico;
+  final ValueChanged<bool> onModoOscuro;
+  final ValueChanged<bool> onTextoGrande;
+  final ValueChanged<bool> onDepuradorSemantico;
+
+  const InicioTienda({
+    super.key,
+    required this.modoOscuro,
+    required this.textoGrande,
+    required this.depuradorSemantico,
+    required this.onModoOscuro,
+    required this.onTextoGrande,
+    required this.onDepuradorSemantico,
+  });
 
   @override
   State<InicioTienda> createState() => _InicioTiendaState();
@@ -103,7 +164,14 @@ class _InicioTiendaState extends State<InicioTienda> {
         onVaciar: _vaciar,
       ),
       const PantallaCalculadora(),
-      const PantallaPerfil(),
+      PantallaPerfil(
+        modoOscuro: widget.modoOscuro,
+        textoGrande: widget.textoGrande,
+        depuradorSemantico: widget.depuradorSemantico,
+        onModoOscuro: widget.onModoOscuro,
+        onTextoGrande: widget.onTextoGrande,
+        onDepuradorSemantico: widget.onDepuradorSemantico,
+      ),
     ];
 
     return Scaffold(
@@ -133,13 +201,17 @@ class _InicioTiendaState extends State<InicioTienda> {
           Expanded(child: pantallas[_indice]),
         ],
       ),
-      // P06: BottomNavigationBar en móvil
+      // P06: BottomNavigationBar en móvil — colores del tema para
+      // mantener contraste suficiente en modo claro y oscuro
       bottomNavigationBar: esAncho
           ? null
           : BottomNavigationBar(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor:
+                  Theme.of(context).colorScheme.onSurfaceVariant,
               currentIndex: _indice,
               onTap: (i) => setState(() => _indice = i),
-              selectedItemColor: Colors.teal,
               items: [
                 const BottomNavigationBarItem(
                     icon: Icon(Icons.storefront), label: 'Tienda'),
@@ -531,9 +603,11 @@ class _FilaCarrito extends StatelessWidget {
         title: Text(producto.nombre),
         subtitle: Text('S/. ${(producto.precio * cantidad).toStringAsFixed(2)}'),
         // P03 contador + P05 eventos + P06 touch targets
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        // P06: MergeSemantics — el lector lee el grupo como una unidad
+        trailing: MergeSemantics(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             Semantics(
               label: 'Quitar ${producto.nombre}',
               button: true,
@@ -561,6 +635,7 @@ class _FilaCarrito extends StatelessWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -752,10 +827,25 @@ class _PantallaCalculadoraState extends State<PantallaCalculadora> {
   }
 }
 
-// ---------- Perfil (Práctica 03: tarjeta de perfil) ----------
+// ---------- Perfil (Práctica 03: tarjeta de perfil + Guía 06: accesibilidad) ----------
 
 class PantallaPerfil extends StatelessWidget {
-  const PantallaPerfil({super.key});
+  final bool modoOscuro;
+  final bool textoGrande;
+  final bool depuradorSemantico;
+  final ValueChanged<bool> onModoOscuro;
+  final ValueChanged<bool> onTextoGrande;
+  final ValueChanged<bool> onDepuradorSemantico;
+
+  const PantallaPerfil({
+    super.key,
+    required this.modoOscuro,
+    required this.textoGrande,
+    required this.depuradorSemantico,
+    required this.onModoOscuro,
+    required this.onTextoGrande,
+    required this.onDepuradorSemantico,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -766,70 +856,113 @@ class PantallaPerfil extends StatelessWidget {
         title: const Text('Perfil'),
         centerTitle: true,
       ),
-      backgroundColor: Colors.grey.shade100,
-      body: Center(
-        child: Card(
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.teal.shade200,
-                  child: const Icon(Icons.person,
-                      size: 70, color: Colors.white),
-                ),
-                const SizedBox(height: 16),
-                const Text('Yeison Emerson Ccoscco Chahua',
-                    style: TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('Ingeniería Informática',
-                    style: TextStyle(
-                        fontSize: 15, color: Colors.grey.shade600)),
-                const Divider(height: 32),
-                // P06: LayoutBuilder — las estadísticas se adaptan
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final estadisticas = [
-                      const _Estadistica(valor: '6', etiqueta: 'Prácticas'),
-                      const _Estadistica(
-                          valor: '100%', etiqueta: 'Entregas'),
-                      const _Estadistica(valor: '184193', etiqueta: 'Código'),
-                    ];
-                    return constraints.maxWidth > 300
-                        ? Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceEvenly,
-                            children: estadisticas,
-                          )
-                        : Column(children: estadisticas);
-                  },
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.message),
-                  label: const Text('Enviar Mensaje'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.teal.shade200,
+                    child: const Icon(Icons.person,
+                        size: 70, color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Yeison Emerson Ccoscco Chahua',
+                      style: TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Ingeniería Informática',
+                      style: TextStyle(
+                          fontSize: 15,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant)),
+                  const Divider(height: 32),
+                  // P06: LayoutBuilder — las estadísticas se adaptan
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final estadisticas = [
+                        const _Estadistica(valor: '6', etiqueta: 'Prácticas'),
+                        const _Estadistica(
+                            valor: '100%', etiqueta: 'Entregas'),
+                        const _Estadistica(
+                            valor: '184193', etiqueta: 'Código'),
+                      ];
+                      return constraints.maxWidth > 300
+                          ? Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceEvenly,
+                              children: estadisticas,
+                            )
+                          : Column(children: estadisticas);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.message),
+                    label: const Text('Enviar Mensaje'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Guía 06: configuración de accesibilidad
+          Card(
+            child: Column(
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.accessibility_new, color: Colors.teal),
+                  title: Text('Accesibilidad (Guía 06)',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.dark_mode),
+                  title: const Text('Modo oscuro'),
+                  subtitle: const Text('Alterna entre tema claro y oscuro'),
+                  value: modoOscuro,
+                  onChanged: onModoOscuro,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.text_increase),
+                  title: const Text('Texto grande'),
+                  subtitle: const Text(
+                      'Amplía el texto sin bloquear el escalado del sistema'),
+                  value: textoGrande,
+                  onChanged: onTextoGrande,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.visibility),
+                  title: const Text('Árbol semántico'),
+                  subtitle: const Text(
+                      'SemanticsDebugger: muestra las etiquetas para lectores de pantalla'),
+                  value: depuradorSemantico,
+                  onChanged: onDepuradorSemantico,
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
