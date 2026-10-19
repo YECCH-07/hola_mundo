@@ -5,13 +5,17 @@
 //  P01 proyecto Flutter · P02 Map/List/Set en el modelo ·
 //  P03 tarjeta de perfil, contadores y calculadora ·
 //  P04 widgets y feedback · P05 eventos y validación ·
-//  P06 diseño responsivo y accesible
+//  P06 diseño responsivo y accesible ·
+//  P07 formularios, modelos de datos, CRUD y validaciones
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
 import 'modelos.dart';
+import 'practica07/modelos_p07.dart';
+import 'practica07/pantalla_inventario.dart';
+import 'practica07/pantalla_registro.dart';
 
 void main() {
   runApp(const TiendaApp());
@@ -113,17 +117,60 @@ class _InicioTiendaState extends State<InicioTienda> {
   /// Favoritos: `Set<String>` — P02 Set
   final Set<String> _favoritos = {};
 
+  /// P07: inventario propio — `List<Producto>` administrado con setState
+  final List<Producto> _inventario = [];
+
+  /// P07: cuenta registrada con el formulario (modelo inmutable Usuario)
+  Usuario? _usuario;
+
   int get _totalArticulos => _carrito.isEmpty
       ? 0
       : _carrito.values.reduce((a, b) => a + b); // P02 reduce
 
+  /// Catálogo base + productos agregados desde el inventario.
+  List<Producto> get _todosLosProductos => [...productos, ..._inventario];
+
+  Set<String> get _todasLasCategorias => {
+    ...categorias,
+    ..._inventario.map((p) => p.categoria),
+  };
+
+  Map<String, Producto> get _productosPorId => {
+    for (final p in _todosLosProductos) p.id: p,
+  };
+
+  Producto? _productoPorId(String id) {
+    final base = catalogo[id];
+    if (base != null) return base;
+    for (final p in _inventario) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   double get _totalPrecio => _carrito.entries.fold(
-        0.0,
-        (suma, e) => suma + catalogo[e.key]!.precio * e.value,
-      );
+    0.0,
+    (suma, e) => suma + (_productoPorId(e.key)?.precio ?? 0) * e.value,
+  );
 
   void _agregar(Producto p) {
     setState(() => _carrito[p.id] = (_carrito[p.id] ?? 0) + 1);
+  }
+
+  void _agregarAlInventario(Producto p) {
+    setState(() => _inventario.add(p));
+  }
+
+  void _eliminarDelInventario(Producto p) {
+    setState(() {
+      _inventario.removeWhere((x) => x.id == p.id);
+      _carrito.remove(p.id);
+      _favoritos.remove(p.id);
+    });
+  }
+
+  void _registrarUsuario(Usuario u) {
+    setState(() => _usuario = u);
   }
 
   void _quitar(Producto p) {
@@ -147,6 +194,8 @@ class _InicioTiendaState extends State<InicioTienda> {
 
     final pantallas = [
       PantallaTienda(
+        productos: _todosLosProductos,
+        categorias: _todasLasCategorias,
         favoritos: _favoritos,
         onAgregar: _agregar,
         onFavorito: (p) => setState(() {
@@ -157,14 +206,23 @@ class _InicioTiendaState extends State<InicioTienda> {
       ),
       PantallaCarrito(
         carrito: _carrito,
+        productos: _productosPorId,
         totalArticulos: _totalArticulos,
         totalPrecio: _totalPrecio,
         onQuitar: _quitar,
         onAgregar: _agregar,
         onVaciar: _vaciar,
       ),
+      // P07: formulario de inventario + lista dinámica
+      PantallaInventario(
+        productos: _inventario,
+        onAgregar: _agregarAlInventario,
+        onEliminar: _eliminarDelInventario,
+      ),
       const PantallaCalculadora(),
       PantallaPerfil(
+        usuario: _usuario,
+        onUsuario: _registrarUsuario,
         modoOscuro: widget.modoOscuro,
         textoGrande: widget.textoGrande,
         depuradorSemantico: widget.depuradorSemantico,
@@ -185,17 +243,29 @@ class _InicioTiendaState extends State<InicioTienda> {
               labelType: NavigationRailLabelType.all,
               destinations: [
                 const NavigationRailDestination(
-                    icon: Icon(Icons.storefront), label: Text('Tienda')),
+                  icon: Icon(Icons.storefront),
+                  label: Text('Tienda'),
+                ),
                 NavigationRailDestination(
-                    icon: Badge(
-                        label: Text('$_totalArticulos'),
-                        isLabelVisible: _totalArticulos > 0,
-                        child: const Icon(Icons.shopping_cart)),
-                    label: const Text('Carrito')),
+                  icon: Badge(
+                    label: Text('$_totalArticulos'),
+                    isLabelVisible: _totalArticulos > 0,
+                    child: const Icon(Icons.shopping_cart),
+                  ),
+                  label: const Text('Carrito'),
+                ),
                 const NavigationRailDestination(
-                    icon: Icon(Icons.calculate), label: Text('Calculadora')),
+                  icon: Icon(Icons.inventory_2),
+                  label: Text('Inventario'),
+                ),
                 const NavigationRailDestination(
-                    icon: Icon(Icons.person), label: Text('Perfil')),
+                  icon: Icon(Icons.calculate),
+                  label: Text('Calculadora'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.person),
+                  label: Text('Perfil'),
+                ),
               ],
             ),
           Expanded(child: pantallas[_indice]),
@@ -206,26 +276,40 @@ class _InicioTiendaState extends State<InicioTienda> {
       bottomNavigationBar: esAncho
           ? null
           : BottomNavigationBar(
+              // P07: cinco destinos → siempre fijo (no shifting)
+              type: BottomNavigationBarType.fixed,
               backgroundColor: Theme.of(context).colorScheme.surface,
               selectedItemColor: Theme.of(context).colorScheme.primary,
-              unselectedItemColor:
-                  Theme.of(context).colorScheme.onSurfaceVariant,
+              unselectedItemColor: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant,
               currentIndex: _indice,
               onTap: (i) => setState(() => _indice = i),
               items: [
                 const BottomNavigationBarItem(
-                    icon: Icon(Icons.storefront), label: 'Tienda'),
+                  icon: Icon(Icons.storefront),
+                  label: 'Tienda',
+                ),
                 BottomNavigationBarItem(
                   icon: Badge(
-                      label: Text('$_totalArticulos'),
-                      isLabelVisible: _totalArticulos > 0,
-                      child: const Icon(Icons.shopping_cart)),
+                    label: Text('$_totalArticulos'),
+                    isLabelVisible: _totalArticulos > 0,
+                    child: const Icon(Icons.shopping_cart),
+                  ),
                   label: 'Carrito',
                 ),
                 const BottomNavigationBarItem(
-                    icon: Icon(Icons.calculate), label: 'Calculadora'),
+                  icon: Icon(Icons.inventory_2),
+                  label: 'Inventario',
+                ),
                 const BottomNavigationBarItem(
-                    icon: Icon(Icons.person), label: 'Perfil'),
+                  icon: Icon(Icons.calculate),
+                  label: 'Cálculo',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: 'Perfil',
+                ),
               ],
             ),
     );
@@ -235,12 +319,17 @@ class _InicioTiendaState extends State<InicioTienda> {
 // ---------- Tienda: catálogo con chips, grid adaptable y eventos ----------
 
 class PantallaTienda extends StatefulWidget {
+  /// P07: catálogo base + productos del inventario, y sus categorías.
+  final List<Producto> productos;
+  final Set<String> categorias;
   final Set<String> favoritos;
   final void Function(Producto) onAgregar;
   final void Function(Producto) onFavorito;
 
   const PantallaTienda({
     super.key,
+    required this.productos,
+    required this.categorias,
     required this.favoritos,
     required this.onAgregar,
     required this.onFavorito,
@@ -257,8 +346,8 @@ class _PantallaTiendaState extends State<PantallaTienda> {
   Widget build(BuildContext context) {
     // P02: filtrar con where + Set de categorías
     final visibles = _categoria == 'Todas'
-        ? productos
-        : productos.where((p) => p.categoria == _categoria).toList();
+        ? widget.productos
+        : widget.productos.where((p) => p.categoria == _categoria).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -276,7 +365,7 @@ class _PantallaTiendaState extends State<PantallaTienda> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               children: [
-                for (final c in ['Todas', ...categorias])
+                for (final c in ['Todas', ...widget.categorias])
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: FilterChip(
@@ -284,8 +373,7 @@ class _PantallaTiendaState extends State<PantallaTienda> {
                       selected: _categoria == c,
                       selectedColor: Colors.teal.shade100,
                       checkmarkColor: Colors.teal,
-                      onSelected: (_) =>
-                          setState(() => _categoria = c),
+                      onSelected: (_) => setState(() => _categoria = c),
                     ),
                   ),
               ],
@@ -347,8 +435,10 @@ class _TarjetaProducto extends StatelessWidget {
                     children: [
                       // P06: ExcludeSemantics para el emoji decorativo
                       ExcludeSemantics(
-                        child: Text(producto.emoji,
-                            style: const TextStyle(fontSize: 40)),
+                        child: Text(
+                          producto.emoji,
+                          style: const TextStyle(fontSize: 40),
+                        ),
                       ),
                       // P04: icono de favorito (P05: evento onPressed)
                       Semantics(
@@ -376,7 +466,9 @@ class _TarjetaProducto extends StatelessWidget {
                   Text(
                     producto.nombre,
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     'S/. ${producto.precio.toStringAsFixed(2)}',
@@ -403,8 +495,7 @@ class _TarjetaProducto extends StatelessWidget {
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                            '${producto.nombre} añadido al carrito'),
+                        content: Text('${producto.nombre} añadido al carrito'),
                         behavior: SnackBarBehavior.floating,
                         duration: const Duration(seconds: 2),
                       ),
@@ -425,6 +516,9 @@ class _TarjetaProducto extends StatelessWidget {
 
 class PantallaCarrito extends StatefulWidget {
   final Map<String, int> carrito;
+
+  /// P07: incluye el catálogo y los productos creados en el inventario.
+  final Map<String, Producto> productos;
   final int totalArticulos;
   final double totalPrecio;
   final void Function(Producto) onQuitar;
@@ -434,6 +528,7 @@ class PantallaCarrito extends StatefulWidget {
   const PantallaCarrito({
     super.key,
     required this.carrito,
+    required this.productos,
     required this.totalArticulos,
     required this.totalPrecio,
     required this.onQuitar,
@@ -464,8 +559,9 @@ class _PantallaCarritoState extends State<PantallaCarrito> {
         builder: (_) => AlertDialog(
           title: const Text('¡Compra realizada!'),
           content: Text(
-              'Gracias ${_nombre.text}, tu pedido de '
-              'S/. ${widget.totalPrecio.toStringAsFixed(2)} llegará pronto.'),
+            'Gracias ${_nombre.text}, tu pedido de '
+            'S/. ${widget.totalPrecio.toStringAsFixed(2)} llegará pronto.',
+          ),
           actions: [
             ElevatedButton(
               onPressed: () {
@@ -502,8 +598,11 @@ class _PantallaCarritoState extends State<PantallaCarrito> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined,
-                      size: 80, color: Colors.grey),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
                   SizedBox(height: 12),
                   Text('Tu carrito está vacío'),
                 ],
@@ -515,7 +614,7 @@ class _PantallaCarritoState extends State<PantallaCarrito> {
                 // P02: recorrer el Map con entries
                 for (final e in widget.carrito.entries)
                   _FilaCarrito(
-                    producto: catalogo[e.key]!,
+                    producto: widget.productos[e.key]!,
                     cantidad: e.value,
                     onQuitar: widget.onQuitar,
                     onAgregar: widget.onAgregar,
@@ -529,7 +628,9 @@ class _PantallaCarritoState extends State<PantallaCarrito> {
                     'S/. ${widget.totalPrecio.toStringAsFixed(2)}',
                     textAlign: TextAlign.right,
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -601,40 +702,44 @@ class _FilaCarrito extends StatelessWidget {
           child: Text(producto.emoji, style: const TextStyle(fontSize: 28)),
         ),
         title: Text(producto.nombre),
-        subtitle: Text('S/. ${(producto.precio * cantidad).toStringAsFixed(2)}'),
+        subtitle: Text(
+          'S/. ${(producto.precio * cantidad).toStringAsFixed(2)}',
+        ),
         // P03 contador + P05 eventos + P06 touch targets
         // P06: MergeSemantics — el lector lee el grupo como una unidad
         trailing: MergeSemantics(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-            Semantics(
-              label: 'Quitar ${producto.nombre}',
-              button: true,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: IconButton(
-                  onPressed: () => onQuitar(producto),
-                  icon: const Icon(Icons.remove_circle_outline),
+              Semantics(
+                label: 'Quitar ${producto.nombre}',
+                button: true,
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    onPressed: () => onQuitar(producto),
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
                 ),
               ),
-            ),
-            Text('$cantidad',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            Semantics(
-              label: 'Agregar ${producto.nombre}',
-              button: true,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: IconButton(
-                  onPressed: () => onAgregar(producto),
-                  icon: const Icon(Icons.add_circle_outline),
+              Text(
+                '$cantidad',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Semantics(
+                label: 'Agregar ${producto.nombre}',
+                button: true,
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    onPressed: () => onAgregar(producto),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -772,8 +877,10 @@ class _PantallaCalculadoraState extends State<PantallaCalculadora> {
                         } else if (b == '⌫') {
                           setState(() {
                             if (!_nuevoNumero && _display.length > 1) {
-                              _display =
-                                  _display.substring(0, _display.length - 1);
+                              _display = _display.substring(
+                                0,
+                                _display.length - 1,
+                              );
                             } else if (!_nuevoNumero) {
                               _display = '0';
                               _nuevoNumero = true;
@@ -786,8 +893,8 @@ class _PantallaCalculadoraState extends State<PantallaCalculadora> {
                           });
                         } else if (b == '%') {
                           setState(() {
-                            _display =
-                                (double.parse(_display) / 100).toString();
+                            _display = (double.parse(_display) / 100)
+                                .toString();
                           });
                         } else if (b == '.') {
                           setState(() {
@@ -830,6 +937,9 @@ class _PantallaCalculadoraState extends State<PantallaCalculadora> {
 // ---------- Perfil (Práctica 03: tarjeta de perfil + Guía 06: accesibilidad) ----------
 
 class PantallaPerfil extends StatelessWidget {
+  /// P07: cuenta registrada con el formulario y callback al registrarse.
+  final Usuario? usuario;
+  final void Function(Usuario) onUsuario;
   final bool modoOscuro;
   final bool textoGrande;
   final bool depuradorSemantico;
@@ -839,6 +949,8 @@ class PantallaPerfil extends StatelessWidget {
 
   const PantallaPerfil({
     super.key,
+    required this.usuario,
+    required this.onUsuario,
     required this.modoOscuro,
     required this.textoGrande,
     required this.depuradorSemantico,
@@ -846,6 +958,15 @@ class PantallaPerfil extends StatelessWidget {
     required this.onTextoGrande,
     required this.onDepuradorSemantico,
   });
+
+  void _abrirRegistro(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            PantallaRegistro(usuarioInicial: usuario, onRegistrado: onUsuario),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -873,35 +994,37 @@ class PantallaPerfil extends StatelessWidget {
                   CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.teal.shade200,
-                    child: const Icon(Icons.person,
-                        size: 70, color: Colors.white),
+                    child: const Icon(
+                      Icons.person,
+                      size: 70,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Yeison Emerson Ccoscco Chahua',
-                      style: TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Yeison Emerson Ccoscco Chahua',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Ingeniería Informática',
-                      style: TextStyle(
-                          fontSize: 15,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant)),
+                  Text(
+                    'Ingeniería Informática',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const Divider(height: 32),
                   // P06: LayoutBuilder — las estadísticas se adaptan
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final estadisticas = [
                         const _Estadistica(valor: '6', etiqueta: 'Prácticas'),
-                        const _Estadistica(
-                            valor: '100%', etiqueta: 'Entregas'),
-                        const _Estadistica(
-                            valor: '184193', etiqueta: 'Código'),
+                        const _Estadistica(valor: '100%', etiqueta: 'Entregas'),
+                        const _Estadistica(valor: '184193', etiqueta: 'Código'),
                       ];
                       return constraints.maxWidth > 300
                           ? Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceEvenly,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: estadisticas,
                             )
                           : Column(children: estadisticas);
@@ -916,7 +1039,9 @@ class PantallaPerfil extends StatelessWidget {
                       backgroundColor: Colors.teal.shade700,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 12),
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -927,14 +1052,74 @@ class PantallaPerfil extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Guía 07: cuenta registrada con el formulario de la práctica
+          Card(
+            child: Column(
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.manage_accounts, color: Colors.teal),
+                  title: Text(
+                    'Cuenta (Guía 07)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    'Registro con Form, GlobalKey, RegEx y términos',
+                  ),
+                ),
+                if (usuario == null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: FilledButton.icon(
+                        onPressed: () => _abrirRegistro(context),
+                        icon: const Icon(Icons.person_add_alt_1),
+                        label: const Text('Registrarse'),
+                      ),
+                    ),
+                  )
+                else ...[
+                  ListTile(
+                    leading: const Icon(
+                      Icons.verified_user,
+                      color: Colors.green,
+                    ),
+                    title: Text(usuario!.nombreCompleto),
+                    subtitle: Text(
+                      '${usuario!.email}\n'
+                      'Edad: ${usuario!.edad} · Términos aceptados: '
+                      '${usuario!.aceptaTerminos ? "Sí" : "No"}',
+                    ),
+                    isThreeLine: true,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _abrirRegistro(context),
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Editar registro'),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           // Guía 06: configuración de accesibilidad
           Card(
             child: Column(
               children: [
                 const ListTile(
                   leading: Icon(Icons.accessibility_new, color: Colors.teal),
-                  title: Text('Accesibilidad (Guía 06)',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    'Accesibilidad (Guía 06)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.dark_mode),
@@ -947,7 +1132,8 @@ class PantallaPerfil extends StatelessWidget {
                   secondary: const Icon(Icons.text_increase),
                   title: const Text('Texto grande'),
                   subtitle: const Text(
-                      'Amplía el texto sin bloquear el escalado del sistema'),
+                    'Amplía el texto sin bloquear el escalado del sistema',
+                  ),
                   value: textoGrande,
                   onChanged: onTextoGrande,
                 ),
@@ -955,7 +1141,8 @@ class PantallaPerfil extends StatelessWidget {
                   secondary: const Icon(Icons.visibility),
                   title: const Text('Árbol semántico'),
                   subtitle: const Text(
-                      'SemanticsDebugger: muestra las etiquetas para lectores de pantalla'),
+                    'SemanticsDebugger: muestra las etiquetas para lectores de pantalla',
+                  ),
                   value: depuradorSemantico,
                   onChanged: onDepuradorSemantico,
                 ),
@@ -977,11 +1164,14 @@ class _Estadistica extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(valor,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal)),
+        Text(
+          valor,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.teal,
+          ),
+        ),
         Text(etiqueta, style: TextStyle(color: Colors.grey.shade600)),
       ],
     );

@@ -1,15 +1,14 @@
-// Prueba básica de la aplicación Hola Mundo.
+// Prueba básica de la aplicación Carrito de Compras.
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hola_mundo/main.dart';
 
 void main() {
-  testWidgets('Muestra Hola Mundo', (WidgetTester tester) async {
-    // Construye la aplicación y dibuja un frame.
-    await tester.pumpWidget(const HolaMundoApp());
+  testWidgets('La tienda muestra su catálogo', (WidgetTester tester) async {
+    await tester.pumpWidget(const TiendaApp());
 
-    // Verifica que el texto Hola Mundo esté en pantalla.
-    expect(find.text('¡Hola Mundo!'), findsOneWidget);
+    expect(find.text('Carrito de Compras'), findsOneWidget);
+    expect(find.text('Manzana'), findsOneWidget);
   });
 }
