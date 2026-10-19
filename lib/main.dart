@@ -6,7 +6,7 @@
 //  P03 tarjeta de perfil, contadores y calculadora ·
 //  P04 widgets y feedback · P05 eventos y validación ·
 //  P06 diseño responsivo y accesible ·
-//  P07 formularios, modelos de datos, CRUD y validaciones
+//  P07 formularios, autenticación, CRUD y validaciones
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,7 @@ import 'package:flutter/semantics.dart';
 import 'modelos.dart';
 import 'practica07/modelos_p07.dart';
 import 'practica07/pantalla_inventario.dart';
+import 'practica07/pantalla_login.dart';
 import 'practica07/pantalla_registro.dart';
 
 void main() {
@@ -120,7 +121,11 @@ class _InicioTiendaState extends State<InicioTienda> {
   /// P07: inventario propio — `List<Producto>` administrado con setState
   final List<Producto> _inventario = [];
 
-  /// P07: cuenta registrada con el formulario (modelo inmutable Usuario)
+  /// P07: cuenta registrada en el dispositivo (autenticación local).
+  Usuario? _cuenta;
+  String? _contrasenaCuenta;
+
+  /// P07: sesión activa. Sin sesión se muestra el inicio de sesión.
   Usuario? _usuario;
 
   int get _totalArticulos => _carrito.isEmpty
@@ -169,8 +174,27 @@ class _InicioTiendaState extends State<InicioTienda> {
     });
   }
 
-  void _registrarUsuario(Usuario u) {
+  void _registrarUsuario(Usuario u, String contrasena) {
+    setState(() {
+      _cuenta = u;
+      _contrasenaCuenta = contrasena;
+    });
+  }
+
+  void _iniciarSesion(Usuario u) {
     setState(() => _usuario = u);
+  }
+
+  void _cerrarSesion() {
+    setState(() => _usuario = null);
+  }
+
+  void _actualizarCuenta(Usuario u, String contrasena) {
+    setState(() {
+      _cuenta = u;
+      _contrasenaCuenta = contrasena;
+      _usuario = u;
+    });
   }
 
   void _quitar(Producto p) {
@@ -190,6 +214,16 @@ class _InicioTiendaState extends State<InicioTienda> {
 
   @override
   Widget build(BuildContext context) {
+    // P07: el registro es parte del acceso; sin sesión se muestra el login.
+    if (_usuario == null) {
+      return PantallaLogin(
+        cuenta: _cuenta,
+        contrasenaCuenta: _contrasenaCuenta,
+        onIngresar: _iniciarSesion,
+        onRegistrar: _registrarUsuario,
+      );
+    }
+
     final esAncho = MediaQuery.sizeOf(context).width >= 600; // P06 breakpoint
 
     final pantallas = [
@@ -207,6 +241,7 @@ class _InicioTiendaState extends State<InicioTienda> {
       PantallaCarrito(
         carrito: _carrito,
         productos: _productosPorId,
+        usuario: _usuario,
         totalArticulos: _totalArticulos,
         totalPrecio: _totalPrecio,
         onQuitar: _quitar,
@@ -222,7 +257,8 @@ class _InicioTiendaState extends State<InicioTienda> {
       const PantallaCalculadora(),
       PantallaPerfil(
         usuario: _usuario,
-        onUsuario: _registrarUsuario,
+        onActualizarCuenta: _actualizarCuenta,
+        onCerrarSesion: _cerrarSesion,
         modoOscuro: widget.modoOscuro,
         textoGrande: widget.textoGrande,
         depuradorSemantico: widget.depuradorSemantico,
@@ -519,6 +555,9 @@ class PantallaCarrito extends StatefulWidget {
 
   /// P07: incluye el catálogo y los productos creados en el inventario.
   final Map<String, Producto> productos;
+
+  /// P07: usuario autenticado; sus datos prellenan la compra.
+  final Usuario? usuario;
   final int totalArticulos;
   final double totalPrecio;
   final void Function(Producto) onQuitar;
@@ -529,6 +568,7 @@ class PantallaCarrito extends StatefulWidget {
     super.key,
     required this.carrito,
     required this.productos,
+    this.usuario,
     required this.totalArticulos,
     required this.totalPrecio,
     required this.onQuitar,
@@ -544,6 +584,17 @@ class _PantallaCarritoState extends State<PantallaCarrito> {
   final _formKey = GlobalKey<FormState>();
   final _nombre = TextEditingController();
   final _correo = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // P07: los datos de la sesión prellenan el formulario de compra.
+    final u = widget.usuario;
+    if (u != null) {
+      _nombre.text = u.nombreCompleto;
+      _correo.text = u.email;
+    }
+  }
 
   @override
   void dispose() {
@@ -937,9 +988,10 @@ class _PantallaCalculadoraState extends State<PantallaCalculadora> {
 // ---------- Perfil (Práctica 03: tarjeta de perfil + Guía 06: accesibilidad) ----------
 
 class PantallaPerfil extends StatelessWidget {
-  /// P07: cuenta registrada con el formulario y callback al registrarse.
+  /// P07: sesión activa (la app solo llega aquí autenticada).
   final Usuario? usuario;
-  final void Function(Usuario) onUsuario;
+  final void Function(Usuario, String) onActualizarCuenta;
+  final VoidCallback onCerrarSesion;
   final bool modoOscuro;
   final bool textoGrande;
   final bool depuradorSemantico;
@@ -950,7 +1002,8 @@ class PantallaPerfil extends StatelessWidget {
   const PantallaPerfil({
     super.key,
     required this.usuario,
-    required this.onUsuario,
+    required this.onActualizarCuenta,
+    required this.onCerrarSesion,
     required this.modoOscuro,
     required this.textoGrande,
     required this.depuradorSemantico,
@@ -962,8 +1015,10 @@ class PantallaPerfil extends StatelessWidget {
   void _abrirRegistro(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            PantallaRegistro(usuarioInicial: usuario, onRegistrado: onUsuario),
+        builder: (_) => PantallaRegistro(
+          usuarioInicial: usuario,
+          onRegistrado: onActualizarCuenta,
+        ),
       ),
     );
   }
@@ -1059,11 +1114,11 @@ class PantallaPerfil extends StatelessWidget {
                 const ListTile(
                   leading: Icon(Icons.manage_accounts, color: Colors.teal),
                   title: Text(
-                    'Cuenta (Guía 07)',
+                    'Sesión (Guía 07)',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    'Registro con Form, GlobalKey, RegEx y términos',
+                    'Autenticación con Form, GlobalKey, RegEx y términos',
                   ),
                 ),
                 if (usuario == null)
@@ -1094,7 +1149,7 @@ class PantallaPerfil extends StatelessWidget {
                     isThreeLine: true,
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: SizedBox(
                       width: double.infinity,
                       height: 44,
@@ -1102,6 +1157,18 @@ class PantallaPerfil extends StatelessWidget {
                         onPressed: () => _abrirRegistro(context),
                         icon: const Icon(Icons.edit),
                         label: const Text('Editar registro'),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: onCerrarSesion,
+                        icon: const Icon(Icons.logout, color: Colors.red),
+                        label: const Text('Cerrar sesión'),
                       ),
                     ),
                   ),

@@ -14,7 +14,10 @@ import 'validadores.dart';
 
 class PantallaRegistro extends StatefulWidget {
   final Usuario? usuarioInicial;
-  final void Function(Usuario) onRegistrado;
+
+  /// Entrega el usuario creado junto con su contraseña para que el
+  /// inicio de sesión pueda autenticarlo.
+  final void Function(Usuario, String) onRegistrado;
 
   const PantallaRegistro({
     super.key,
@@ -72,7 +75,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
       edad: int.parse(_edad.text),
       aceptaTerminos: _aceptaTerminos,
     );
-    widget.onRegistrado(usuario);
+    widget.onRegistrado(usuario, _contrasena.text);
     setState(() => _registrado = usuario);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
