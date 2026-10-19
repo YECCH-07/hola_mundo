@@ -74,8 +74,9 @@ class Producto {
 
 final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
-final RegExp passwordRegex =
-    RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$');
+final RegExp passwordRegex = RegExp(
+  r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)\S{8,}$',
+);
 
 String? validarCorreo(String? value) {
   if (value == null || value.isEmpty) {
@@ -90,7 +91,7 @@ String? validarContrasena(String? value) {
   if (value == null || value.isEmpty) {
     return 'La contraseña es obligatoria';
   } else if (!passwordRegex.hasMatch(value)) {
-    return 'Debe tener mínimo 8 caracteres, incluir mayúscula, minúscula y número';
+    return 'Mínimo 8 caracteres, con mayúscula, minúscula y número (se permiten símbolos como @, #, \$)';
   }
   return null;
 }
@@ -722,7 +723,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
                         helperText:
-                            'Mínimo 8 caracteres: mayúscula, minúscula y número',
+                            'Mínimo 8 caracteres: mayúscula, minúscula, número y símbolos (@, #, \$)',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(

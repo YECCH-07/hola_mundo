@@ -7,8 +7,9 @@
 final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
 /// Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número.
+/// Se permiten caracteres especiales (@, #, $, ...) y se excluyen espacios.
 final RegExp passwordRegex = RegExp(
-  r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$',
+  r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)\S{8,}$',
 );
 
 String? validarCorreo(String? value) {
@@ -24,7 +25,7 @@ String? validarContrasena(String? value) {
   if (value == null || value.isEmpty) {
     return 'La contraseña es obligatoria';
   } else if (!passwordRegex.hasMatch(value)) {
-    return 'Debe tener mínimo 8 caracteres, incluir mayúscula, minúscula y número';
+    return 'Mínimo 8 caracteres, con mayúscula, minúscula y número (se permiten símbolos como @, #, \$)';
   }
   return null;
 }

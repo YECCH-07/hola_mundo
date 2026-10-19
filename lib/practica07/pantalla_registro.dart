@@ -164,7 +164,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                       obscureText: _obscurecer,
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        helperText: 'Mínimo 8 caracteres: mayúscula, minúscula y número',
+                        helperText: 'Mínimo 8 caracteres: mayúscula, minúscula, número y símbolos (@, #, \$)',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
