@@ -6,7 +6,8 @@
 //  P03 tarjeta de perfil, contadores y calculadora ·
 //  P04 widgets y feedback · P05 eventos y validación ·
 //  P06 diseño responsivo y accesible ·
-//  P07 formularios, autenticación, CRUD y validaciones
+//  P07 formularios, autenticación, CRUD y validaciones ·
+//  P08 GPS, mapas, cámara y sensores del dispositivo
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'practica07/modelos_p07.dart';
 import 'practica07/pantalla_inventario.dart';
 import 'practica07/pantalla_login.dart';
 import 'practica07/pantalla_registro.dart';
+import 'practica08/pantalla_dispositivo.dart';
 
 void main() {
   runApp(const TiendaApp());
@@ -254,6 +256,8 @@ class _InicioTiendaState extends State<InicioTienda> {
         onAgregar: _agregarAlInventario,
         onEliminar: _eliminarDelInventario,
       ),
+      // P08: GPS/mapas, cámara y sensores en una sola pestaña
+      const PantallaDispositivo(),
       const PantallaCalculadora(),
       PantallaPerfil(
         usuario: _usuario,
@@ -295,6 +299,10 @@ class _InicioTiendaState extends State<InicioTienda> {
                   label: Text('Inventario'),
                 ),
                 const NavigationRailDestination(
+                  icon: Icon(Icons.explore_outlined),
+                  label: Text('Dispositivo'),
+                ),
+                const NavigationRailDestination(
                   icon: Icon(Icons.calculate),
                   label: Text('Calculadora'),
                 ),
@@ -312,8 +320,10 @@ class _InicioTiendaState extends State<InicioTienda> {
       bottomNavigationBar: esAncho
           ? null
           : BottomNavigationBar(
-              // P07: cinco destinos → siempre fijo (no shifting)
+              // P07/P08: seis destinos → siempre fijo (no shifting)
               type: BottomNavigationBarType.fixed,
+              selectedFontSize: 11,
+              unselectedFontSize: 10,
               backgroundColor: Theme.of(context).colorScheme.surface,
               selectedItemColor: Theme.of(context).colorScheme.primary,
               unselectedItemColor: Theme.of(context)
@@ -337,6 +347,10 @@ class _InicioTiendaState extends State<InicioTienda> {
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.inventory_2),
                   label: 'Inventario',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.explore_outlined),
+                  label: 'Dispositivo',
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.calculate),
